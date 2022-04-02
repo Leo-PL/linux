@@ -418,10 +418,7 @@ generic_rndis_bind(struct usbnet *dev, struct usb_interface *intf, int flags)
 		goto halt_fail_and_release;
 	}
 
-	if (bp[0] & 0x02)
-		eth_hw_addr_random(net);
-	else
-		ether_addr_copy(net->dev_addr, bp);
+	ether_addr_copy(net->dev_addr, bp);
 
 	/* set a nonzero filter to enable data transfers */
 	memset(u.set, 0, sizeof *u.set);
@@ -461,6 +458,16 @@ EXPORT_SYMBOL_GPL(generic_rndis_bind);
 static int rndis_bind(struct usbnet *dev, struct usb_interface *intf)
 {
 	return generic_rndis_bind(dev, intf, FLAG_RNDIS_PHYM_NOT_WIRELESS);
+}
+
+static int zte_rndis_bind(struct usbnet *dev, struct usb_interface *intf)
+{
+	int status = rndis_bind(dev, intf);
+
+	if (!status && (dev->net->dev_addr[0] & 0x02))
+		eth_hw_addr_random(dev->net);
+
+	return status;
 }
 
 void rndis_unbind(struct usbnet *dev, struct usb_interface *intf)
@@ -607,7 +614,7 @@ static const struct driver_info	rndis_poll_status_info = {
 static const struct driver_info	zte_rndis_info = {
 	.description =	"ZTE RNDIS device",
 	.flags =	FLAG_ETHER | FLAG_POINTTOPOINT | FLAG_FRAMING_RN | FLAG_NO_SETINT,
-	.bind =		rndis_bind,
+	.bind =		zte_rndis_bind,
 	.unbind =	rndis_unbind,
 	.status =	rndis_status,
 	.rx_fixup =	zte_rndis_rx_fixup,
